@@ -334,4 +334,3 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <KioskApp />
     </React.StrictMode>
 );
-
