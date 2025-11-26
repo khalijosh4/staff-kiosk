@@ -3,8 +3,54 @@ import ReactDOM from 'react-dom/client';
 import { Clock, User, Fingerprint, CheckCircle, XCircle, LogIn, LogOut } from 'lucide-react';
 import './index.css';
 
-// API Configuration
-const API_BASE_URL = 'http://localhost:5000/api';
+// Mock Staff Database (Placeholder Data)
+const MOCK_STAFF = [
+    {
+        staff_id: 'STF001',
+        national_id: '12345678',
+        first_name: 'John',
+        last_name: 'Doe',
+        department: 'Engineering',
+        position: 'Senior Developer',
+        photo_path: null
+    },
+    {
+        staff_id: 'STF002',
+        national_id: '87654321',
+        first_name: 'Jane',
+        last_name: 'Smith',
+        department: 'Human Resources',
+        position: 'HR Manager',
+        photo_path: null
+    },
+    {
+        staff_id: 'STF003',
+        national_id: '11223344',
+        first_name: 'Michael',
+        last_name: 'Johnson',
+        department: 'Sales',
+        position: 'Sales Executive',
+        photo_path: null
+    },
+    {
+        staff_id: 'STF004',
+        national_id: '44332211',
+        first_name: 'Sarah',
+        last_name: 'Williams',
+        department: 'Marketing',
+        position: 'Marketing Specialist',
+        photo_path: null
+    },
+    {
+        staff_id: 'STF005',
+        national_id: '55667788',
+        first_name: 'David',
+        last_name: 'Brown',
+        department: 'Finance',
+        position: 'Financial Analyst',
+        photo_path: null
+    }
+];
 
 const KioskApp = () => {
     const [screen, setScreen] = useState('idle'); // idle, profile, success, error
@@ -13,6 +59,7 @@ const KioskApp = () => {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [nationalId, setNationalId] = useState('');
     const [loading, setLoading] = useState(false);
+    const [attendanceRecords, setAttendanceRecords] = useState({});
 
     // Update clock every second
     useEffect(() => {
@@ -40,81 +87,94 @@ const KioskApp = () => {
         setLoading(false);
     };
 
-    const verifyStaff = async () => {
+    const verifyStaff = () => {
         if (!nationalId.trim()) {
             setMessage('Please enter National ID');
             return;
         }
 
         setLoading(true);
-        try {
-            const response = await fetch(`${API_BASE_URL}/staff/national-id/${nationalId}`);
-            const data = await response.json();
+        
+        // Simulate API delay
+        setTimeout(() => {
+            const staff = MOCK_STAFF.find(s => s.national_id === nationalId.trim());
 
-            if (data.success) {
-                setStaffData(data.data);
+            if (staff) {
+                setStaffData(staff);
                 setScreen('profile');
                 setMessage('');
             } else {
                 setScreen('error');
                 setMessage('Staff not found. Please contact administrator.');
             }
-        } catch (error) {
-            setScreen('error');
-            setMessage('Connection error. Please try again.');
-        } finally {
             setLoading(false);
-        }
+        }, 500);
     };
 
-    const handleTimeIn = async () => {
+    const handleTimeIn = () => {
         setLoading(true);
-        try {
-            const response = await fetch(`${API_BASE_URL}/attendance/time-in`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ staff_id: staffData.staff_id })
-            });
-            const data = await response.json();
-
-            if (data.success) {
-                setScreen('success');
-                setMessage(`Welcome ${staffData.first_name}! Time in recorded at ${new Date().toLocaleTimeString()}`);
-            } else {
+        
+        // Simulate API delay
+        setTimeout(() => {
+            const now = new Date();
+            const staffId = staffData.staff_id;
+            
+            // Check if already timed in today
+            if (attendanceRecords[staffId]?.timeIn && !attendanceRecords[staffId]?.timeOut) {
                 setScreen('error');
-                setMessage(data.message || 'Time in failed. Please try again.');
+                setMessage('You have already timed in. Please time out first.');
+                setLoading(false);
+                return;
             }
-        } catch (error) {
-            setScreen('error');
-            setMessage('Connection error. Please try again.');
-        } finally {
+
+            // Record time in
+            setAttendanceRecords(prev => ({
+                ...prev,
+                [staffId]: {
+                    timeIn: now,
+                    timeOut: null
+                }
+            }));
+
+            setScreen('success');
+            setMessage(`Welcome ${staffData.first_name}! Time in recorded at ${now.toLocaleTimeString()}`);
             setLoading(false);
-        }
+        }, 500);
     };
 
-    const handleTimeOut = async () => {
+    const handleTimeOut = () => {
         setLoading(true);
-        try {
-            const response = await fetch(`${API_BASE_URL}/attendance/time-out`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ staff_id: staffData.staff_id })
-            });
-            const data = await response.json();
-
-            if (data.success) {
-                setScreen('success');
-                setMessage(`Goodbye ${staffData.first_name}! Time out recorded at ${new Date().toLocaleTimeString()}. Total hours: ${data.data.total_hours || 'N/A'}`);
-            } else {
+        
+        // Simulate API delay
+        setTimeout(() => {
+            const now = new Date();
+            const staffId = staffData.staff_id;
+            
+            // Check if timed in
+            if (!attendanceRecords[staffId]?.timeIn || attendanceRecords[staffId]?.timeOut) {
                 setScreen('error');
-                setMessage(data.message || 'Time out failed. Please try again.');
+                setMessage('You need to time in first before timing out.');
+                setLoading(false);
+                return;
             }
-        } catch (error) {
-            setScreen('error');
-            setMessage('Connection error. Please try again.');
-        } finally {
+
+            const timeIn = attendanceRecords[staffId].timeIn;
+            const diffMs = now - timeIn;
+            const diffHours = (diffMs / (1000 * 60 * 60)).toFixed(2);
+
+            // Record time out
+            setAttendanceRecords(prev => ({
+                ...prev,
+                [staffId]: {
+                    ...prev[staffId],
+                    timeOut: now
+                }
+            }));
+
+            setScreen('success');
+            setMessage(`Goodbye ${staffData.first_name}! Time out recorded at ${now.toLocaleTimeString()}. Total hours: ${diffHours}`);
             setLoading(false);
-        }
+        }, 500);
     };
 
     // Idle Screen - Waiting for fingerprint/ID
@@ -192,7 +252,7 @@ const KioskApp = () => {
                                 <div className="w-48 h-56 bg-gray-200 rounded-xl overflow-hidden border-4 border-blue-200 shadow-lg">
                                     {staffData.photo_path ? (
                                         <img
-                                            src={`${API_BASE_URL.replace('/api', '')}${staffData.photo_path}`}
+                                            src={staffData.photo_path}
                                             alt={`${staffData.first_name} ${staffData.last_name}`}
                                             className="w-full h-full object-cover"
                                         />
